@@ -1,0 +1,401 @@
+#include <iostream>
+#include <stdio.h>
+#include <math.h>
+#include <limits.h>
+
+using namespace std;
+
+class termen
+{
+
+    private:
+        int coeficient;
+        int exponent;
+        termen* urm;
+
+    public:
+
+        friend class polinom;
+
+        termen(int coeficient=0, int exponent=0, termen* urm=NULL)
+        {
+            this->coeficient = coeficient;
+            this->exponent = exponent;
+            this->urm = urm;
+        }
+
+        friend istream& operator>>(istream& in, termen& aux)
+        {
+            cout<<"coeficient ";in>>aux.coeficient;
+            cout<<"exponent ";in>>aux.exponent;
+
+            return in;
+        }
+
+        friend ostream& operator<<(ostream& out, termen& aux)
+        {
+            cout<<aux.coeficient<<"X^"<<aux.exponent;
+
+            return out;
+        }
+
+        friend istream& operator>>(istream& in, class polinom& pol1);
+        friend ostream& operator<<(ostream& out, class polinom& pol1);
+        friend polinom& operator+(polinom& pol1, polinom& pol2);
+        friend polinom& operator-(polinom& pol1, polinom& pol2);
+        friend polinom& operator*(polinom& pol1, polinom& pol2);
+};
+
+class polinom
+{
+    private:
+        termen* head;
+        termen* tail;
+
+    public:
+        friend termen;
+
+        polinom()
+        {
+            this->head = NULL;
+            this->tail = NULL;
+        }
+
+        polinom(const polinom& pol1)
+        {
+            if(pol1.head == NULL)
+                head = NULL;
+            else
+            {
+                head=new termen(pol1.head->coeficient, pol1.head->exponent);
+                termen *poz_curenta = head, *aux_front = pol1.head, *aux = aux_front;
+                while (aux->urm != NULL)
+                {
+                    poz_curenta->urm = new termen(aux->urm->coeficient, aux->urm->exponent);
+                    aux = aux->urm;
+                    poz_curenta = poz_curenta->urm;
+                }
+            }
+        }
+
+        ~polinom()
+        {
+            termen* aux;
+
+            while (head != NULL)
+            {
+                aux = head->urm;
+                delete head;
+                head = aux;
+            }
+        }
+
+        int valoare(int x)
+        {
+            int val=0;
+            termen* poz_curenta = head;
+
+            while(poz_curenta != NULL)
+            {
+                val = val + poz_curenta->coeficient * pow(x, poz_curenta->exponent);
+                poz_curenta = poz_curenta->urm;
+            }
+
+            return val;
+        }
+
+        void push(termen* aux)
+        {
+            if(head == NULL)
+            {
+                head = aux;
+                tail = aux;
+            }
+            else
+            {
+                termen *poz_curenta = head, *prev;
+
+                while(aux->exponent < poz_curenta->exponent && poz_curenta!=tail)
+                {
+                    prev=poz_curenta;
+                    poz_curenta=poz_curenta->urm;
+                }
+
+                if(poz_curenta == head && aux->exponent > poz_curenta->exponent)
+                {
+                    aux->urm = head;
+                    head=aux;
+                }
+                else
+                    if(poz_curenta == tail && aux->exponent < poz_curenta->exponent)
+                    {
+                        tail->urm = aux;
+                        tail = aux;
+                    }
+                    else
+                        if(aux->exponent == poz_curenta->exponent)
+                            if(poz_curenta->coeficient + aux->coeficient == 0)
+                                poz_curenta = poz_curenta->urm;
+                            else
+                                poz_curenta->coeficient = poz_curenta->coeficient + aux->coeficient;
+                        else
+                        {
+                            aux->urm = prev->urm;
+                            prev->urm = aux;
+                        }
+            }
+        }
+
+        friend ostream& operator<<(ostream& out, polinom& pol1)
+        {
+            termen *aux = pol1.head;
+            do
+            {
+                out<<*aux;
+                if(aux->urm)
+                    if(aux->coeficient>0)
+                        out<<"+";
+                aux = aux->urm;
+            }while(aux != NULL);
+
+            return out;
+        }
+
+        friend istream& operator>>(istream& in, polinom& pol1)
+        {
+            while(1)
+            {
+                termen* aux = new termen;
+                cin>>*aux;
+                if(aux->coeficient==0)
+                    break;
+                pol1.push(aux);
+            }
+
+            return in;
+        }
+
+        friend polinom& operator+(polinom& pol1, polinom& pol2)
+        {
+            polinom *suma = new polinom;
+            termen *aux1 = pol1.head, *aux2 = pol2.head;
+
+            while(aux1 != NULL && aux2 != NULL)
+            {
+                termen *aux = new termen;
+
+                if(aux1->exponent == aux2->exponent)
+                {
+                    aux->coeficient = aux1->coeficient + aux2->coeficient;
+                    aux->exponent = aux1->exponent;
+                    suma->push(aux);
+                    aux1 = aux1->urm;
+                    aux2 = aux2->urm;
+                    continue;
+                }
+                else
+                    if(aux1->exponent < aux2->exponent)
+                    {
+                        aux->coeficient = aux2->coeficient;
+                        aux->exponent = aux2->exponent;
+                        suma->push(aux);
+                        aux2 = aux2->urm;
+                    }
+                    else
+                        {
+                            aux->coeficient = aux1->coeficient;
+                            aux->exponent = aux1->exponent;
+                            suma->push(aux);
+                            aux1 = aux1->urm;
+                        }
+            }
+
+            while(aux1 != NULL)
+            {
+                termen *aux = new termen(aux2->coeficient,aux2->exponent);
+                suma->push(aux);
+                aux1 = aux1->urm;
+            }
+
+            while(aux2 != NULL)
+            {
+                termen *aux = new termen(aux2->coeficient,aux2->exponent);
+                suma->push(aux);
+                aux2 = aux2->urm;
+            }
+
+            return *suma;
+        }
+
+        friend polinom& operator-(polinom& pol1, polinom& pol2)
+        {
+            polinom *diferenta = new polinom;
+            termen *aux1 = pol1.head, *aux2 = pol2.head;
+
+            while(aux1 != NULL && aux2 != NULL)
+            {
+                termen *aux = new termen;
+
+                if(aux1->exponent == aux2->exponent)
+                {
+                    if(aux1->coeficient == aux2->coeficient)
+                    {
+                        aux1 = aux1->urm;
+                        aux2 = aux2->urm;
+                    }
+                    else
+                        {
+                            aux->coeficient = aux1->coeficient - aux2->coeficient;
+                            aux->exponent = aux1->exponent;
+                            diferenta->push(aux);
+                            aux1 = aux1->urm;
+                            aux2 = aux2->urm;
+                        }
+                }
+                else
+                    if(aux1->exponent < aux2->exponent)
+                    {
+                        aux->coeficient =- aux2->coeficient;
+                        aux->exponent = aux2->exponent;
+                        diferenta->push(aux);
+                        aux2 = aux2->urm;
+                    }
+                    else
+                        {
+                            aux->coeficient = aux1->coeficient;
+                            aux->exponent = aux1->exponent;
+                            diferenta->push(aux);
+                            aux1 = aux1->urm;
+                        }
+            }
+
+            while(aux1 != NULL)
+            {
+                termen *aux = new termen(aux2->coeficient,aux2->exponent);aux1 = aux1->urm;
+                diferenta->push(aux);
+            }
+
+            while(aux2 != NULL)
+            {
+                termen *aux = new termen(-aux2->coeficient,aux2->exponent);aux2 = aux2->urm;
+                diferenta->push(aux);
+            }
+
+            return *diferenta;
+        }
+
+        friend polinom& operator*(polinom& pol1, polinom& pol2)
+        {
+            polinom *produs = new polinom;
+            termen *aux1 = pol1.head, *aux2=  pol2.head;
+
+            while(aux1 != NULL)
+            {
+                while(aux2 != NULL)
+                {
+                    termen *aux = new termen(aux1->coeficient * aux2->coeficient,aux1->exponent + aux2->exponent);
+                    produs->push(aux);
+                    aux2 = aux2->urm;
+                }
+                aux1 = aux1->urm;
+                aux2=pol2.head;
+            }
+
+            return *produs;
+        }
+};
+
+int optiune(int opt, int a, int b)
+{
+    while(opt<a || opt>b)
+    {
+        cout<<endl;
+        cout<<"Introdu un numar intre "<<a<<" si "<<b<<":";
+        cin>>opt;
+        cout<<endl;
+    }
+    return opt;
+}
+
+int main()
+{
+    int opt=-1, n, p, q, x;
+    polinom *v = new polinom[100], s;
+    while(opt!=0)
+    {
+        cout<<"Selecteaza una din urmatoarele optiuni:"<<endl<<endl;
+        cout<<"1. Introdu n polinoame"<<endl;
+        cout<<"2. Calculeaza valoarea unui polinom intr-un punct"<<endl;
+        cout<<"3. Calculeaza suma a doua polinoame"<<endl;
+        cout<<"4. Calculeaza diferenta a doua polinoame"<<endl;
+        cout<<"5. Calculeaza produsul a doua polinoame"<<endl;
+        cout<<"0. Pa"<<endl;
+        opt=optiune(-1,0,5);
+
+        if(opt==1)
+        {
+            cout<<"Introduceti numarul de polinoame ce urmeaza a fi citite"<<endl;
+            n=optiune(-1,1,INT_MAX);
+            for(int i=0;i<n;i++)
+            {
+                if(i==0)
+                    cout<<"Primul polinom: "<<endl;
+                else
+                    cout<<"Al "<<i+1<<"-lea polinom:"<<endl;
+                cin>>v[i];
+            }
+            cout<<"Ai introdus cu succes "<<n<<" polinoame"<<endl;
+            system("pause");
+            system("CLS");
+            continue;
+        }
+
+        if(opt==2)
+        {
+            cout<<"Introdu numarul polinomului in care vrei sa calculezi valoarea in punctul x: ";opt=optiune(-1,1,n)-1;
+            cout<<"Introdu o valoare pentru x:";cin>>x;
+            cout<<"Valoarea lui "<<v[opt]<<" in "<<x<<" este "<<v[opt].valoare(x)<<endl;
+            system("pause");
+            system("CLS");
+            continue;
+        }
+
+        if(opt==3)
+        {
+            cout<<"Introdu numerele polinoamelor pe care vrei sa le aduni"<<endl;
+            cout<<"Primul polinom: ";p=optiune(-1,1,n)-1;
+            cout<<"Al doilea polinom: ";q=optiune(-1,1,n)-1;
+            s=v[p]+v[q];
+            cout<<"Suma dintre "<<v[p]<<" si "<<v[q]<<" este "<<s<<endl;
+            system("pause");
+            system("CLS");
+            continue;
+        }
+
+        if(opt==4)
+        {
+            cout<<"Introdu numerele polinoamelor pe care vrei sa le scazi"<<endl;
+            cout<<"Primul polinom: ";p=optiune(-1,1,n)-1;
+            cout<<"Al doilea polinom: ";q=optiune(-1,1,n)-1;
+            s=v[p]-v[q];
+            cout<<"Diferenta dintre "<<v[p]<<" si "<<v[q]<<" este "<<s<<endl;
+            system("pause");
+            system("CLS");
+            continue;
+        }
+
+        if(opt==5)
+        {
+            cout<<"Introdu numerele polinoamelor pe care vrei sa le inmultesti"<<endl;
+            cout<<"Primul polinom: ";p=optiune(-1,1,n)-1;
+            cout<<"Al doilea polinom: ";q=optiune(-1,1,n)-1;
+            s=v[p]*v[q];
+            cout<<"Produsul dintre "<<v[p]<<" si "<<v[q]<<" este "<<s<<endl;
+            system("pause");
+            system("CLS");
+            continue;
+        }
+    }
+
+    return 0;
+}
